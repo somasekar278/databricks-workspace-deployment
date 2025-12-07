@@ -1,0 +1,122 @@
+# Copy this file to terraform.tfvars and fill in your values
+
+# AWS Configuration
+aws_region  = "us-east-1"  # Change to your preferred region
+aws_profile = "default"    # Change to your AWS CLI profile
+
+# Databricks Account Configuration
+databricks_account_id = "YOUR_DATABRICKS_ACCOUNT_ID"  # Required: Get this from Databricks account console
+
+# Workspace Configuration
+workspace_name            = "my-databricks-workspace"
+workspace_deployment_name = "my-workspace-deployment"  # Must be unique, lowercase alphanumeric and hyphens only
+workspace_prefix          = "my-dbx"                   # Prefix for AWS resource names
+
+# VPC Configuration (leave as default to create new VPC)
+use_existing_vpc           = false
+vpc_cidr_block            = "10.0.0.0/16"
+private_subnet_cidr_blocks = ["10.0.1.0/24", "10.0.2.0/24"]
+
+# Unity Catalog Configuration
+# Option 1: Create a new Unity Catalog metastore from scratch
+create_uc_metastore = true                      # Set to true to create a new metastore, false to use existing
+uc_metastore_name   = "my-unity-catalog"        # Name for the new metastore (only used if create_uc_metastore = true)
+
+# Option 2: Use an existing Unity Catalog metastore (only if create_uc_metastore = false)
+uc_metastore_id = ""  # Set this to your existing metastore ID if create_uc_metastore = false
+
+# Default catalog name for the workspace
+default_catalog_name = "main"
+
+# Service Principal Configuration (Optional)
+# Create service principals for workspace management (e.g., for CI/CD, automation)
+create_service_principals = false
+# service_principals = [
+#   {
+#     name        = "cicd-deployment-sp"
+#     description = "Service principal for CI/CD deployments"
+#     admin       = true  # Grant workspace admin privileges
+#   },
+#   {
+#     name        = "data-engineering-sp"
+#     description = "Service principal for data engineering jobs"
+#     admin       = false
+#   }
+# ]
+
+# User Management (Optional)
+# Create users and groups in the workspace
+# groups = [
+#   { display_name = "Data Engineers" },
+#   { display_name = "Data Scientists" },
+#   { display_name = "Analysts" }
+# ]
+#
+# users = [
+#   {
+#     user_name    = "john.doe@company.com"
+#     display_name = "John Doe"
+#     groups       = ["Data Engineers"]
+#   },
+#   {
+#     user_name    = "jane.smith@company.com"
+#     display_name = "Jane Smith"
+#     groups       = ["Data Scientists", "Analysts"]
+#   }
+# ]
+
+# Unity Catalog Objects (Optional)
+# Create catalogs, schemas, and volumes
+# catalogs = [
+#   {
+#     name    = "my-catalog"
+#     comment = "My catalog description"
+#     schemas = [
+#       {
+#         name    = "my-schema"
+#         comment = "My schema description"
+#         volumes = [
+#           {
+#             name        = "my_volume"
+#             volume_type = "MANAGED"  # or "EXTERNAL"
+#             comment     = "My volume description"
+#           }
+#         ]
+#       }
+#     ]
+#   }
+# ]
+
+# Lakebase Configuration (Optional)
+# Database Instances (Lakebase compute instances)
+# lakebase_database_instances = [
+#   {
+#     name                   = "my-lakebase-instance"
+#     capacity               = "CU_2"  # Options: CU_2, CU_4, CU_8, CU_16
+#     enable_pg_native_login = true    # Enable PostgreSQL native login
+#   }
+# ]
+#
+# # Database Catalogs (Unity Catalog registration + database creation)
+# lakebase_database_catalogs = [
+#   {
+#     name                          = "my_lakebase_catalog"
+#     database_instance_name        = "my-lakebase-instance"
+#     database_name                 = "my_database"
+#     create_database_if_not_exists = true
+#   }
+# ]
+
+# Tags
+tags = {
+  ManagedBy   = "Terraform"
+  Environment = "Development"
+  Owner       = "your-name"
+  Project     = "databricks-workspace"
+}
+
+# If using existing VPC, uncomment and set these:
+# existing_vpc_id             = "vpc-xxxxx"
+# existing_subnet_ids         = ["subnet-xxxxx", "subnet-yyyyy"]
+# existing_security_group_ids = ["sg-xxxxx"]
+
