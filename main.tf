@@ -638,6 +638,50 @@ module "lakebase" {
 }
 
 # ============================================
+# SQL Warehouse for Fraud Dashboard
+# ============================================
+
+resource "databricks_sql_endpoint" "fraud_dashboard" {
+  name             = "${var.workspace_prefix}-fraud-analytics-warehouse"
+  cluster_size     = "Small"
+  max_num_clusters = 1
+  auto_stop_mins   = 20
+  
+  tags {
+    custom_tags {
+      key   = "Purpose"
+      value = "FraudAnalytics"
+    }
+  }
+
+  provider = databricks.workspace
+
+  depends_on = [
+    databricks_mws_workspaces.this,
+    databricks_metastore_assignment.this
+  ]
+}
+
+# ============================================
+# Fraud Dashboard Tables Module
+# ============================================
+
+module "fraud_tables" {
+  source = "./modules/fraud-tables"
+
+  workspace_url           = "https://${databricks_mws_workspaces.this.workspace_url}"
+  sql_warehouse_id        = databricks_sql_endpoint.fraud_dashboard.id
+  databricks_cli_profile  = var.databricks_cli_profile
+
+  depends_on_resources = [
+    databricks_mws_workspaces.this,
+    databricks_metastore_assignment.this,
+    module.unity_catalog,
+    databricks_sql_endpoint.fraud_dashboard
+  ]
+}
+
+# ============================================
 # Apps Module
 # ============================================
 
@@ -653,7 +697,8 @@ module "apps" {
   depends_on = [
     databricks_mws_workspaces.this,
     databricks_metastore_assignment.this,
-    module.lakebase
+    module.lakebase,
+    module.fraud_tables
   ]
 }
 

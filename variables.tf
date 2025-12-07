@@ -195,3 +195,10 @@ variable "tags" {
   }
 }
 
+# Databricks CLI Configuration
+variable "databricks_cli_profile" {
+  description = "Databricks CLI profile to use for SQL execution"
+  type        = string
+  default     = "DEFAULT"
+}
+

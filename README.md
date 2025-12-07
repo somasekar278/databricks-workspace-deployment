@@ -10,9 +10,11 @@ This automated deployment creates a complete fraud investigation platform:
 - ✅ **Unity Catalog IAM Role** (self-assuming, ready for managed tables)
 - ✅ **Lakebase Database Instance** (PostgreSQL-compatible)
 - ✅ **Unity Catalog Objects** (catalogs, schemas, volumes)
+- ✅ **Fraud Dashboard Tables** (Unity Catalog Delta tables with sample data)
+- ✅ **SQL Warehouse** (for analytics and dashboard queries)
 - ✅ **Users & Groups** with role-based access control
 - ✅ **Fraud Case Management Application** (full-stack React + Node.js app)
-- ✅ **Sample Data** (6 fraud cases, 3 analysts, pre-configured alerts)
+- ✅ **Sample Data** (10 fraud cases, 3 investigators, transactions, indicators)
 
 ## 📋 Prerequisites
 
@@ -42,16 +44,22 @@ This automated deployment creates a complete fraud investigation platform:
 
 ```
 databricks-workspace-deployment/
-├── deploy-everything.sh          # 🚀 ONE-CLICK DEPLOYMENT SCRIPT
-├── cleanup-everything.sh         # 🧹 Destroy all resources
+├── deploy-fraud-app.sh          # 🎯 UNIFIED FRAUD APP DEPLOYMENT
+├── deploy-everything.sh         # 🚀 Infrastructure deployment only
+├── cleanup-everything.sh        # 🧹 Destroy all resources
 ├── terraform.tfvars             # Configuration file (edit this!)
 ├── main.tf                      # Main Terraform configuration
 ├── variables.tf                 # Variable definitions
 ├── outputs.tf                   # Output definitions
+├── sql/                         # SQL scripts for fraud tables
+│   ├── fraud_dashboard_schema.sql
+│   └── fraud_dashboard_seed.sql
 └── modules/
     ├── users/                   # User & group management
     ├── unity-catalog/           # Catalog, schema, volume management
-    └── lakebase/                # Database instance management
+    ├── fraud-tables/            # Fraud dashboard tables
+    ├── lakebase/                # Database instance management
+    └── apps/                    # Databricks Apps management
 
 fraud-case-management/
 ├── app.yaml                     # Databricks App configuration
@@ -79,6 +87,46 @@ That's it! The deployment script will automatically:
 - Generate `terraform.tfvars` from your config
 - Update `app.yaml` with correct values
 - Create all necessary configuration files
+
+---
+
+## 🎯 Unified Fraud App Deployment (Recommended)
+
+The **simplest way** to deploy everything including the fraud case management app:
+
+```bash
+# Deploy everything with one command!
+./deploy-fraud-app.sh
+```
+
+This script will:
+1. ✅ Deploy all infrastructure (AWS + Databricks)
+2. ✅ Create Unity Catalog with fraud dashboard tables
+3. ✅ Create SQL Warehouse for analytics
+4. ✅ Insert sample fraud data (10 cases, transactions, indicators)
+5. ✅ Deploy the Fraud Case Management application
+6. ✅ Provide you with the app URL
+
+**Environment Variables:**
+- `FRAUD_APP_DIR` - Path to fraud-case-management directory (default: `$HOME/fraud-case-management`)
+- `DASHBOARD_ID` - Dashboard ID to reference (default: auto-detected)
+
+**Example:**
+```bash
+FRAUD_APP_DIR=/path/to/fraud-case-management ./deploy-fraud-app.sh
+```
+
+**When to use this?**
+- ✅ Fresh deployment from scratch
+- ✅ You want everything set up automatically
+- ✅ You're deploying the fraud management use case
+
+**When NOT to use this?**
+- ❌ You only want infrastructure without the app
+- ❌ You're deploying a different application
+- ❌ You want more control over each step
+
+For infrastructure-only deployment, use `./deploy-everything.sh` instead.
 
 ---
 

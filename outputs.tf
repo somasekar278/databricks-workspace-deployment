@@ -125,3 +125,23 @@ output "app_urls" {
   value       = module.apps.app_urls
 }
 
+output "sql_warehouse_id" {
+  description = "SQL Warehouse ID for fraud analytics"
+  value       = databricks_sql_endpoint.fraud_dashboard.id
+}
+
+output "sql_warehouse_jdbc_url" {
+  description = "JDBC URL for SQL Warehouse"
+  value       = databricks_sql_endpoint.fraud_dashboard.jdbc_url
+}
+
+output "fraud_tables_created" {
+  description = "Status of fraud dashboard tables creation"
+  value       = module.fraud_tables.tables_created
+}
+
+output "fraud_tables_seeded" {
+  description = "Status of fraud dashboard tables seeding"
+  value       = module.fraud_tables.tables_seeded
+}
+
