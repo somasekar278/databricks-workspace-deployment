@@ -29,16 +29,14 @@ resource "null_resource" "create_fraud_tables" {
       # Create schema
       execute_sql "CREATE SCHEMA IF NOT EXISTS \`afc-mvp\`.\`fraud-investigation\`"
       
-      # Create tables (execute each CREATE TABLE separately)
-      cat "${path.root}/sql/fraud_dashboard_schema.sql" | \
-        grep -v "^--" | \
-        awk '/CREATE TABLE/,/;/' | \
-        sed 's/CREATE SCHEMA.*;//' | \
-        sed 's/USE.*;//' | \
-        awk -v RS=';' 'NF {print $0 ";"}' | \
+      # Create tables using awk with semicolon as record separator
+      # This properly handles multi-line CREATE TABLE statements
+      awk 'BEGIN {RS=";"} /CREATE TABLE/ && NF' "${path.root}/sql/fraud_dashboard_schema.sql" | \
         while IFS= read -r sql; do
-          if [ ! -z "$sql" ] && echo "$sql" | grep -q "CREATE TABLE"; then
-            execute_sql "$sql"
+          # Clean up the SQL statement: remove comments and empty lines, collapse whitespace
+          clean_sql=$(echo "$sql" | sed '/^--/d' | sed '/^$/d' | tr '\n' ' ' | sed 's/  */ /g')
+          if [ ! -z "$clean_sql" ]; then
+            execute_sql "$clean_sql;"
           fi
         done
       
@@ -46,7 +44,8 @@ resource "null_resource" "create_fraud_tables" {
     EOT
   }
 
-  depends_on = [var.depends_on_resources]
+  # FIX Bug 1: Don't wrap var.depends_on_resources in brackets - it's already a list
+  depends_on = var.depends_on_resources
 }
 
 # Execute seed data SQL
@@ -63,6 +62,7 @@ resource "null_resource" "seed_fraud_tables" {
       # Function to execute SQL via Databricks CLI
       execute_sql() {
         local sql="$1"
+        echo "Executing data insertion..."
         
         databricks sql execute \
           --profile "${var.databricks_cli_profile}" \
@@ -71,15 +71,16 @@ resource "null_resource" "seed_fraud_tables" {
           --statement "$sql"
       }
       
-      # Execute INSERT statements
-      cat "${path.root}/sql/fraud_dashboard_seed.sql" | \
-        grep -v "^--" | \
-        sed 's/USE.*;//' | \
-        awk -v RS=';' 'NF {print $0 ";"}' | \
+      # FIX Bug 2: Use awk with semicolon as record separator to properly handle multi-line INSERT statements
+      # This ensures entire INSERT statements (spanning multiple lines) are kept together
+      awk 'BEGIN {RS=";"} /INSERT INTO/ && NF' "${path.root}/sql/fraud_dashboard_seed.sql" | \
         while IFS= read -r sql; do
-          if [ ! -z "$sql" ] && echo "$sql" | grep -q "INSERT INTO"; then
-            echo "Inserting data..."
-            execute_sql "$sql"
+          # Clean up the SQL: remove comments and USE statements, collapse whitespace
+          clean_sql=$(echo "$sql" | grep -v '^--' | grep -v '^USE' | sed '/^$/d' | tr '\n' ' ' | sed 's/  */ /g' | sed 's/^ //;s/ $//')
+          
+          if [ ! -z "$clean_sql" ] && echo "$clean_sql" | grep -q "INSERT INTO"; then
+            # Add semicolon back and execute
+            execute_sql "$clean_sql;"
           fi
         done
       
@@ -89,4 +90,3 @@ resource "null_resource" "seed_fraud_tables" {
 
   depends_on = [null_resource.create_fraud_tables]
 }
-
