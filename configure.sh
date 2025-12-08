@@ -206,19 +206,16 @@ cat > ../fraud-case-management/app.yaml << EOF
 command: ["sh", "-c", "cd /app/python/source_code && npm install && npm run build && npm start"]
 
 env:
-  # Database Configuration
+  # Database Configuration (Lakebase with OAuth authentication)
   - name: DB_HOST
     value: "$LAKEBASE_DNS"
   - name: DB_PORT
     value: "5432"
   - name: DB_NAME
     value: "$LAKEBASE_DB_NAME"
-  - name: DB_USER
-    value: "$DB_ADMIN_USER"
-  - name: DB_PASSWORD
-    value: "$DB_ADMIN_PASSWORD"
-  - name: DB_SSL
-    value: "true"
+  # Note: DB_USER and DB_PASSWORD removed - using OAuth authentication instead
+  # Username is derived from DATABRICKS_CLIENT_ID (Service Principal UUID)
+  # Password is an OAuth token retrieved automatically
   
   # Node.js Configuration
   - name: NODE_ENV
@@ -227,6 +224,7 @@ env:
     value: "$APP_PORT"
   
   # Databricks OAuth Configuration
+  # Used for both Lakebase database authentication AND workspace API calls
   - name: DATABRICKS_HOST
     value: "$WORKSPACE_URL"
   - name: DATABRICKS_CLIENT_ID

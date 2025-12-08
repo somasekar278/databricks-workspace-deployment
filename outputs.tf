@@ -1,3 +1,28 @@
+# ============================================================================
+# Secrets Manager Outputs
+# ============================================================================
+
+output "secrets_manager" {
+  description = "OAuth secrets stored in AWS Secrets Manager"
+  value = {
+    terraform_sp_secret_arn  = module.secrets_manager.terraform_sp_secret_arn
+    terraform_sp_secret_name = module.secrets_manager.terraform_sp_secret_name
+    workspace_sp_secret_arn  = module.secrets_manager.workspace_sp_secret_arn
+    workspace_sp_secret_name = module.secrets_manager.workspace_sp_secret_name
+    fraud_app_secret_arn     = module.secrets_manager.fraud_app_secret_arn
+    fraud_app_secret_name    = module.secrets_manager.fraud_app_secret_name
+  }
+}
+
+output "secret_retrieval_commands" {
+  description = "AWS CLI commands to retrieve OAuth secrets"
+  value       = module.secrets_manager.retrieval_commands
+}
+
+# ============================================================================
+# Workspace Outputs
+# ============================================================================
+
 output "workspace_id" {
   description = "ID of the created Databricks workspace"
   value       = databricks_mws_workspaces.this.workspace_id
@@ -135,13 +160,22 @@ output "sql_warehouse_jdbc_url" {
   value       = databricks_sql_endpoint.fraud_dashboard.jdbc_url
 }
 
-output "fraud_tables_created" {
-  description = "Status of fraud dashboard tables creation"
-  value       = module.fraud_tables.tables_created
+output "delta_tables_created" {
+  description = "List of unified Delta tables (used by both app and dashboards)"
+  value       = module.app_delta_tables.tables_created
 }
 
-output "fraud_tables_seeded" {
-  description = "Status of fraud dashboard tables seeding"
-  value       = module.fraud_tables.tables_seeded
+output "delta_schema" {
+  description = "Schema where unified Delta tables were created"
+  value       = module.app_delta_tables.schema_name
+}
+
+output "delta_to_lakebase_sync" {
+  description = "Delta to Lakebase sync configuration"
+  value = {
+    tables   = module.delta_to_lakebase_sync.synced_tables
+    schedule = module.delta_to_lakebase_sync.sync_schedule
+    mode     = module.delta_to_lakebase_sync.sync_mode
+  }
 }
 

@@ -170,58 +170,61 @@ echo "✅ Wait complete"
 echo ""
 
 # ============================================
-# STEP 5: Setup Database
+# STEP 5: Setup Lakebase (app_users table)
 # ============================================
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}🗄️  STEP 5/7: Setting up PostgreSQL Database${NC}"
+echo -e "${GREEN}🗄️  STEP 5/7: Setting up Lakebase (app_users)${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
 
-echo "⚠️  MANUAL STEP REQUIRED:"
-echo ""
-echo "Please run these SQL commands in Databricks SQL Editor:"
-echo "  (Connect to: $LAKEBASE_INSTANCE)"
-echo ""
-echo -e "${YELLOW}────────────────────────────────────────────────────────${NC}"
-cat << 'SQLEOF'
--- 1. Create PostgreSQL user
-CREATE USER admin WITH PASSWORD 'FraudAdmin2024!';
-
--- 2. Grant privileges
-GRANT ALL ON SCHEMA public TO admin;
-GRANT CREATE ON SCHEMA public TO admin;
-GRANT USAGE ON SCHEMA public TO admin;
-
--- 3. Create fraud_management schema
-CREATE SCHEMA IF NOT EXISTS fraud_management;
-GRANT ALL ON SCHEMA fraud_management TO admin;
-GRANT CREATE ON SCHEMA fraud_management TO admin;
-GRANT USAGE ON SCHEMA fraud_management TO admin;
-SQLEOF
-echo -e "${YELLOW}────────────────────────────────────────────────────────${NC}"
-echo ""
-read -p "Press Enter once you've run these SQL commands..."
+echo "✅ Lakebase PostgreSQL instance created by Terraform"
+echo "   Host: $LAKEBASE_DNS"
+echo "   Database: fraud_detection_db"
 echo ""
 
-# Now setup tables and data
-cd "$FRAUD_APP_DIR"
-echo "📝 Creating database tables..."
-PGSSLMODE=require PGPASSWORD="FraudAdmin2024!" psql \
+# Get OAuth token for Service Principal
+echo "🔐 Getting OAuth token for database setup..."
+SECRET_JSON=$(aws secretsmanager get-secret-value \
+  --secret-id "databricks/som-workspace/sp-oauth" \
+  --region eu-west-1 \
+  --profile som \
+  --query SecretString \
+  --output text)
+
+SP_CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.client_secret')
+SP_CLIENT_ID="47c8c7ea-da8b-4b5a-bf2f-24fe287e08aa"
+
+TOKEN_RESPONSE=$(curl -s -X POST "https://one-env-som-workspace.cloud.databricks.com/oidc/v1/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=${SP_CLIENT_ID}" \
+  -d "client_secret=${SP_CLIENT_SECRET}" \
+  -d "scope=all-apis")
+
+OAUTH_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+
+if [ -z "$OAUTH_TOKEN" ] || [ "$OAUTH_TOKEN" == "null" ]; then
+  echo -e "${RED}❌ Failed to get OAuth token${NC}"
+  exit 1
+fi
+
+echo "✅ OAuth token retrieved"
+echo ""
+
+# Create app_users table
+cd "$TERRAFORM_DIR"
+echo "📝 Creating app_users table..."
+PGSSLMODE=require PGPASSWORD="$OAUTH_TOKEN" psql \
   -h "$LAKEBASE_DNS" \
   -p 5432 \
-  -U admin \
+  -U "$SP_CLIENT_ID" \
   -d fraud_detection_db \
-  -f backend/db/schema-with-namespace.sql > /dev/null 2>&1
+  -f sql/lakebase_app_users.sql > /dev/null 2>&1
 
-echo "🌱 Seeding sample data..."
-PGSSLMODE=require PGPASSWORD="FraudAdmin2024!" psql \
-  -h "$LAKEBASE_DNS" \
-  -p 5432 \
-  -U admin \
-  -d fraud_detection_db \
-  -f backend/db/seed-with-namespace.sql > /dev/null 2>&1
-
-echo "✅ Database setup complete!"
+echo "✅ app_users table created (empty - ready for application use)"
+echo ""
+echo "ℹ️  Note: Operational fraud data is stored in Unity Catalog Delta tables"
+echo "   Lakebase only contains app_users for authentication"
 echo ""
 
 # ============================================

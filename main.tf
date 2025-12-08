@@ -43,6 +43,31 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+# ============================================================================
+# Secrets Manager Module - Store OAuth credentials in AWS Secrets Manager
+# ============================================================================
+
+module "secrets_manager" {
+  source = "./modules/secrets-manager"
+
+  # Account-level SP OAuth (for Terraform)
+  terraform_sp_client_id     = var.terraform_sp_client_id
+  terraform_sp_client_secret = var.terraform_sp_client_secret
+  databricks_account_id      = var.databricks_account_id
+
+  # Workspace-level SP OAuth
+  workspace_sp_client_id     = var.workspace_sp_client_id
+  workspace_sp_client_secret = var.workspace_sp_client_secret
+  workspace_url              = "${var.workspace_deployment_name}.cloud.databricks.com"
+
+  # Fraud app OAuth (using same workspace SP)
+  create_fraud_app_secret  = true
+  fraud_app_client_id      = var.workspace_sp_client_id
+  fraud_app_client_secret  = var.workspace_sp_client_secret
+
+  tags = var.tags
+}
+
 # Create VPC for Databricks workspace
 resource "aws_vpc" "databricks_vpc" {
   count = var.use_existing_vpc ? 0 : 1
@@ -666,17 +691,54 @@ resource "databricks_sql_endpoint" "fraud_dashboard" {
 # Fraud Dashboard Tables Module
 # ============================================
 
-module "fraud_tables" {
-  source = "./modules/fraud-tables"
+# ============================================
+# Unified Delta Tables Module
+# Creates Delta tables used by BOTH:
+# - Application (CRUD operations)
+# - Dashboard (Lakeview analytics)
+# ============================================
 
-  workspace_url           = "https://${databricks_mws_workspaces.this.workspace_url}"
-  sql_warehouse_id        = databricks_sql_endpoint.fraud_dashboard.id
-  databricks_cli_profile  = var.databricks_cli_profile
+# Automated Delta table creation using REST API (headless execution compatible)
+module "app_delta_tables" {
+  source = "./modules/app-delta-tables"
 
-  depends_on_resources = [
+  workspace_url              = databricks_mws_workspaces.this.workspace_url
+  sql_warehouse_id           = databricks_sql_endpoint.fraud_dashboard.id
+  databricks_client_id       = var.workspace_sp_client_id
+  databricks_client_secret   = var.workspace_sp_client_secret
+
+  depends_on = [
     databricks_mws_workspaces.this,
     databricks_metastore_assignment.this,
     module.unity_catalog,
+    databricks_sql_endpoint.fraud_dashboard
+  ]
+}
+
+# Note: Previous fraud_tables module removed - consolidated into app_delta_tables
+# The tables created by app_delta_tables serve both application and dashboard needs
+
+# ============================================
+# Delta to Lakebase Sync Module
+# Syncs Unity Catalog Delta tables to Lakebase PostgreSQL
+# Schedule: Daily at 23:00 UTC
+# ============================================
+
+module "delta_to_lakebase_sync" {
+  source = "./modules/delta-to-lakebase-sync"
+
+  source_catalog        = "afc-mvp"
+  source_schema         = "fraud-investigation"
+  lakebase_catalog_name = "afc_lakebase_catalog"
+  target_schema         = "fraud_management"
+
+  providers = {
+    databricks = databricks.workspace
+  }
+
+  depends_on = [
+    module.app_delta_tables,
+    module.lakebase,
     databricks_sql_endpoint.fraud_dashboard
   ]
 }
@@ -698,7 +760,8 @@ module "apps" {
     databricks_mws_workspaces.this,
     databricks_metastore_assignment.this,
     module.lakebase,
-    module.fraud_tables
+    module.app_delta_tables,
+    module.delta_to_lakebase_sync
   ]
 }
 

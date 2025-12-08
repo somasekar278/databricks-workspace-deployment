@@ -17,6 +17,31 @@ variable "databricks_account_id" {
   type        = string
 }
 
+# OAuth Secrets Configuration
+variable "terraform_sp_client_id" {
+  description = "Service Principal Client ID for Terraform account-level operations"
+  type        = string
+  sensitive   = true
+}
+
+variable "terraform_sp_client_secret" {
+  description = "Service Principal Client Secret for Terraform account-level operations"
+  type        = string
+  sensitive   = true
+}
+
+variable "workspace_sp_client_id" {
+  description = "Service Principal Client ID for workspace-level operations (can be same as terraform_sp_client_id)"
+  type        = string
+  sensitive   = true
+}
+
+variable "workspace_sp_client_secret" {
+  description = "Service Principal Client Secret for workspace-level operations"
+  type        = string
+  sensitive   = true
+}
+
 # Workspace Configuration
 variable "workspace_name" {
   description = "Name of the Databricks workspace"
