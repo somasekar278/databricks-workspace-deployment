@@ -336,6 +336,18 @@ resource "aws_iam_role_policy" "cross_account_policy" {
           "${aws_s3_bucket.root_storage.arn}/*",
           aws_s3_bucket.root_storage.arn
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = [
+          module.secrets_manager.terraform_sp_secret_arn,
+          module.secrets_manager.workspace_sp_secret_arn,
+          module.secrets_manager.fraud_app_secret_arn
+        ]
       }
     ]
   })
