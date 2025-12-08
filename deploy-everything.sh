@@ -190,7 +190,7 @@ export DATABRICKS_CLIENT_ID="$TF_VAR_workspace_sp_client_id"
 export DATABRICKS_CLIENT_SECRET="$TF_VAR_workspace_sp_client_secret"
 export DATABRICKS_HOST="https://one-env-som-workspace.cloud.databricks.com"
 
-if python3 create-lakebase-app-users.py; then
+if python3 modules/lakebase/create-lakebase-app-users.py; then
   echo "✅ app_users table created (empty - ready for application use)"
   echo ""
   echo "ℹ️  Note: Operational fraud data is stored in Unity Catalog Delta tables"
